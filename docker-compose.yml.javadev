@@ -1,0 +1,26 @@
+version: "3.1"
+
+services:
+    javadev:
+# if container name is set then docker will not be able to create multiple instances of it
+# i.e. swarm or scale up
+#        container_name: javadev
+        image: jdk8_mvn_git:1.0.0
+        # restart: always
+        tty: true
+        stdin_open: true
+        networks:
+            javadev_net:
+                aliases:
+                    - jdev
+        hostname: jdev
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+# the following line can be commended out or deleted 
+# if the container is not to have access to a host directory
+# in which case the two environment variables used there need not be set
+            - ../javadev:/home/jdev
+#
+networks:
+    javadev_net:
+        driver: bridge

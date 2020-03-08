@@ -1,0 +1,75 @@
+FROM alpine
+
+## revise for non-alpine OS
+##     shell is alpine-specific
+##     .profile is ash shell-specific
+##     adduser is alpine-specific
+##
+ENV ALPMIN_USERNAME=jdev
+ENV ALPMIN_UID=1000
+ENV ALPMIN_GID=1000
+ENV ALPMIN_GNAME=jdev
+ENV ALPMIN_SHELL=/bin/ash
+ENV ALPMIN_SHELL_PROFILE=.profile
+ENV ALPMIN_ROOT=/jdev
+ENV JAVA_HOME=/opt/zulu8.44.0.11-ca-jdk8.0.242-linux_musl_x64
+ENV TZ_PATH=Australia/Sydney
+ENV TZ_NAME=Australia/Sydney
+ENV ENV=/etc/profile
+
+# install packages from alpine repository
+RUN apk update && \
+    apk upgrade && \
+    apk add \
+      net-tools \
+      iputils \
+      nano \
+      wget \
+      tzdata \
+      openssh-client \
+      git \
+      maven  && \
+#
+# set timezone
+    cp -v /usr/share/zoneinfo/${TZ_PATH} /etc/localtime && \
+    echo "${TZ_NAME}" >  /etc/timezone && \
+#
+# add non-privileged user
+    addgroup --gid ${ALPMIN_GID} ${ALPMIN_GNAME} && \
+    adduser -u ${ALPMIN_UID} -G ${ALPMIN_GNAME} -s ${ALPMIN_SHELL} -h /home/${ALPMIN_USERNAME} -D ${ALPMIN_USERNAME} && \
+    echo ${ALPMIN_USERNAME} > pw && \
+    echo ${ALPMIN_USERNAME} >> pw && \
+    cat pw | passwd ${ALPMIN_USERNAME} && \
+    rm -v pw && \
+    mkdir -pv ${ALPMIN_ROOT} && \
+    chown -Rv ${ALPMIN_UID}:${ALPMIN_GID} ${ALPMIN_ROOT} && \
+#
+# update user profile
+    echo "MAVEN_OPTS=-Xmx3g" > /home/${ALPMIN_USERNAME}/.mavenrc && \
+    echo "export JAVA_HOME=${JAVA_HOME}" >> /home/${ALPMIN_USERNAME}/${ALPMIN_SHELL_PROFILE} && \
+    echo "export MAVEN_OPTS=-Xmx3g" >> /home/${ALPMIN_USERNAME}/${ALPMIN_SHELL_PROFILE} && \
+    echo "export PATH=${JAVA_HOME}/bin:${PATH}" >> /home/${ALPMIN_USERNAME}/${ALPMIN_SHELL_PROFILE} && \
+    chmod u+x /home/${ALPMIN_USERNAME}/${ALPMIN_SHELL_PROFILE} && \
+    chown -Rv ${ALPMIN_UID}:${ALPMIN_GID} /home/${ALPMIN_ROOT} && \
+#
+# get and install OpenJDK8
+    mkdir -pv ~/Downloads && \
+    cd /root/Downloads && \
+    wget -q https://cdn.azul.com/zulu/bin/zulu8.44.0.11-ca-jdk8.0.242-linux_musl_x64.tar.gz -O zulu8.44.0.11-ca-jdk8.0.242-linux_musl_x64.tar.gz && \
+    cd /opt && \
+    tar xf /root/Downloads/zulu8.44.0.11-ca-jdk8.0.242-linux_musl_x64.tar.gz && \
+    ${JAVA_HOME}/bin/java -version && \
+    ${JAVA_HOME}/bin/javac -version && \
+    rm -v /root/Downloads/zulu8.44.0.11-ca-jdk8.0.242-linux_musl_x64.tar.gz && \
+#
+# make sure that JAVA_HOME is pre-pended to the default path
+    echo 'export PATH=${JAVA_HOME}/bin:${PATH}' >> ${ENV} && \
+#
+# create entrypoint script
+    echo "#!/bin/ash" > /usr/local/bin/docker-entrypoint.sh && \
+    echo "set -e"  >> /usr/local/bin/docker-entrypoint.sh && \
+    echo "exec /bin/ash -c 'while true; do sleep 10000; done'"  >> /usr/local/bin/docker-entrypoint.sh && \
+    chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["ash","-c","while true; do sleep 10000; done"]
+
