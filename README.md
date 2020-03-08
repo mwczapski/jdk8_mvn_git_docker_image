@@ -10,22 +10,22 @@ This document details the steps I have taken to create a Docker Image that can b
 
 #### References:   
 [Alpine Linux baseline Docker Image](https://hub.docker.com/_/alpine "Alpine Linux baseline Docker Image")   
-[Zulu OpenKDK for Alpine Linux](https://hub.docker.com/r/azul/zulu-openjdk-alpine "Zulu OpenKDK for Alpine Linux")   
+[Zulu OpenJDK for Alpine Linux](https://hub.docker.com/r/azul/zulu-openjdk-alpine "Zulu OpenJDK for Alpine Linux")   
 [jdk8.0.242-linux_musl_x64.tar.gz Download Link](https://cdn.azul.com/zulu/bin/zulu8.44.0.11-ca-jdk8.0.242-linux_musl_x64.tar.gz "jdk8.0.242-linux_musl_x64 Download Link")  
 [jdk - Zulu Community](https://www.azul.com/downloads/zulu-community/?&architecture=x86-64-bit&package=jdk "jdk - Zulu Community")  
 
-It is assumed that the host is a Linux system used through the Windows 10 Windows Subsystem for Linux 2 (WSL2). I used this work environment with WSL2 running Debian 10. If you are working on a real Linux environment, you will need to make some adjustments to some file paths.
+It is assumed that the host is a Linux system used through the Windows 10 Windows Subsystem for Linux 2 (WSL2). I used this work environment with WSL2 running Debian 10. If you are working in a real Linux environment, you will need to make some adjustments to some file paths.
 ## Pre-requisites
 ### Docker
 Docker for your platform is required to create Docker artefacts. It is assumed to be installed and functional.   
-Please note that my Docker Desktop is installed on Windows 10 but I am using it from the WSL2 Bash shell. Some file paths used in commands are idiosyncratic. For example few commands expect semi-DOS file paths, like `d:/docker/javadev/docker`, where some others require a 'real' DOS path, like `d:\\docker\\javadev\\docker`. Keep an eye out for this is your host operating system is a real Linux/Unix.
+Please note that my Docker Desktop is installed on Windows 10 but I am using it from the WSL2 Bash shell. Some file paths used in commands are idiosyncratic. For example few commands expect semi-DOS file paths, like `d:/docker/javadev/docker`, where some others require a 'real' DOS path, like `d:\\docker\\javadev\\docker`. Keep an eye out for this if your host operating system is a real Linux/Unix.
 #### References:   
 [Getting Started with Docker](https://www.docker.com/get-started "Getting Started with Docker")   
 
 ## Establish the environment   
 Please note that I am using the Bash shell so the command syntax and usages are from that environment.
 
-Please note that I create and populate a bunch of environment variables so as to make it easier to make changes if needed when following the steps. I am also leaving some environment variables as comments serve as examples of what values can be provided and how they can be formatted.   
+Please note that I create and populate a bunch of environment variables so as to make it easier to make changes if needed when following the steps. I am also leaving some environment variables as comments to serve as examples of what values can be provided and how they can be formatted.   
 
 ```
 function toDosPath() { echo $1 | sed 's|/mnt/\(.\)|\1:|' | tr '\\' '/'; }
@@ -73,7 +73,7 @@ clear; set | grep 'JDEV_\|ALPMIN_\|CONTAINER_\|TZ_\|JAVA_'
 ```
 The environment variables defined above are used in the Dockerfile and in Docker commands, to ensure consistency and minimise the effort that would be required if you wanted to chage paths, object names and the like.
 ## Create Dockerfile
-Please note that the environment variables starting with '`ENV xxxx`' in the Dockerfile will be provided values defined in the environment but will note replaced in the Dockerfile. This serves to document the values in the Dockerfile but also causes the environment variables so defined to be globally available in the docker image that will be constructed using this Dockerfile. The values of these variables will be able to be accessed inside the container if needed. 
+Please note that the environment variables starting with '`ENV xxxx`' in the Dockerfile will be provided values defined in the environment but will not be replaced in the Dockerfile. This serves to document the values in the Dockerfile but also causes the environment variables so defined to be globally available in the docker image that will be constructed using this Dockerfile. The values of these variables will be able to be accessed inside the container if needed. 
 ```
 cat <<-EOF > ${JDEV_HOME}/docker/Dockerfile.${ALPMIN_CONTAINER_NAME}
 FROM alpine
@@ -261,14 +261,14 @@ export ALPMIN_IMAGE_VERSION=1.0.0
 export ALPMIN_IMAGE_NAME=jdk8_mvn_git
 export CONTAINER_VOULME_GUEST="/home/${ALPMIN_USERNAME}"
 
-# these can be changed as required for each docker-ccompose service
+# these can be changed as required for each docker-compose service
 export ALPMIN_CONTAINER_NAME=javadev
 export ALPMIN_NET_DC_INTERNAL=javadev_net
 export ALPMIN_CONTAINER_NAME=javadev
 export CONTAINER_VOULME_HOST_RELATIVE="../javadev"
 ```
 ### Create a docker-compose.yml using jdk8_mvn_git:1.0.0 image
-This docker-compose file defines the network that this, and related containers if any, would use to communicate, and mounts the shared host directory in the container. This shared directory can be used for bi-directional file exchange, for example to allow development on the host and compilation in the guest, where the IDE runs on the host and accesses the files in the shared directory, and compilatim and execution environment is in the container and accesses the same files form there.
+This docker-compose file defines the network that this, and related containers if any, would use to communicate, and mounts the shared host directory in the container. This shared directory can be used for bi-directional file exchange, for example to allow development on the host and compilation in the guest, where the IDE runs on the host and accesses the files in the shared directory, and compilation and execution environment is in the container and accesses the same files form there.
 ```
 cat <<-EOF > ${JDEV_HOME}/docker/docker-compose.yml.${ALPMIN_CONTAINER_NAME}
 version: "3.1"
@@ -313,7 +313,7 @@ containerId=$(docker ps -aqf "name=${ALPMIN_CONTAINER_NAME}")
 
 ASSIGNED_CONTAINER_NAME=$(docker container inspect ${containerId} | grep '"Name": "/' | sed 's|^[ ]\+"Name": "/||;s|",||')
 ```
-Verify presence and versions of development tools, using container name or assigned container id):
+Verify presence and versions of development tools, using container name or assigned container id:
 ```
 docker container exec \
     -itu ${ALPMIN_USERNAME} \
@@ -369,7 +369,7 @@ docker-compose -f docker-compose.yml.${ALPMIN_CONTAINER_NAME} up -d ${ALPMIN_CON
 ```
 Verify that file has survived across re-starts.  
 
-Please note that because the `container_name` directive in the docker-compose.yml file was commented out the container does not have a fixed name. The `docker-compose` up command will generate a container name based on the 'service' name in the docker-compose.yml file.   
+Please note that because the `container_name` directive in the docker-compose.yml file was commented out the container does not have a fixed name. The `docker-compose up` command will generate a container name based on the 'service' name in the docker-compose.yml file.   
 
 To execute certain container manipulations we must find the container id and/or container name.  
 While the output of the `docker-compose ps` command will show ids and names of all the running containers there are ways in which the process can be scrypted, should the need arise. The following two commands are examples of that:
@@ -383,6 +383,7 @@ docker exec -itu ${ALPMIN_USERNAME} ${containerId} ${ALPMIN_SHELL} -lc 'ls -al ~
 ## Scale containers up and down
 
 With the `container_name` omitted from the docker-compose.yml file it is possible to scale the number of container instances running on the host.  
+
 Scale up to 5 container instances:
 ```
 docker-compose -f docker-compose.yml.${ALPMIN_CONTAINER_NAME} up -d --scale ${ALPMIN_CONTAINER_NAME}=5 ${ALPMIN_CONTAINER_NAME} 
@@ -402,4 +403,4 @@ docker-compose -f docker-compose.yml.${ALPMIN_CONTAINER_NAME} stop
 docker-compose -f docker-compose.yml.${ALPMIN_CONTAINER_NAME} rm
 ```
 ## Summary
-The objective of this project was to develop a Docker Image that could be used for rapidly creating Docker Container instances for Java 8 development. The image includes the OpenJDK 8, Maven and Git, which are all presumed to be needed in a Java 8 development environment, whether stand-alone or as workers in CI environments.
+The objective of this project was to develop a Docker Image that could be used for rapidly creating Docker Container instances for Java 8 development. The image includes the OpenJDK 8, Maven and Git, which are all presumed to be needed in a Java 8 development environment, whether stand-alone or used in workers in CI environments.
